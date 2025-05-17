@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador de Conexión, Audio y Video</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Comprobación de Sistema</h1>
+        
+        <div id="status-message" class="status-message">
+            <p>Verificando dispositivos y conexión...</p>
+        </div>
+        
+        <div id="permission-prompt" class="permission-prompt">
+            <div class="permission-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="permission-text">
+                <p>Esta página necesita permiso para acceder a tu cámara y micrófono.</p>
+                <p>Por favor, acepta el permiso en la ventana emergente de tu navegador.</p>
+            </div>
+            <button id="request-permission-button" class="primary-button">Permitir acceso</button>
+            <div class="alternative-options">
+                <button id="audio-only-button" class="secondary-button">Probar solo con audio</button>
+                <button id="try-alternate-camera" class="secondary-button">Probar cámara alternativa</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="test-item" id="connection-test">
+                <div class="icon">
+                    <i class="fas fa-wifi"></i>
+                </div>
+                <div class="info">
+                    <h2>Conexión a Internet</h2>
+                    <p id="connection-status">Comprobando...</p>
+                </div>
+                <div class="status-icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+            </div>
+            
+            <div class="test-item" id="camera-test">
+                <div class="icon">
+                    <i class="fas fa-video"></i>
+                </div>
+                <div class="info">
+                    <h2>Cámara</h2>
+                    <p id="camera-status">Comprobando...</p>
+                </div>
+                <div class="status-icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+            </div>
+            
+            <div class="test-item" id="microphone-test">
+                <div class="icon">
+                    <i class="fas fa-microphone"></i>
+                </div>
+                <div class="info">
+                    <h2>Micrófono</h2>
+                    <p id="mic-status">Comprobando...</p>
+                </div>
+                <div class="status-icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="preview-container">
+            <div class="video-container">
+                <video id="video-preview" autoplay playsinline muted></video>
+                <div class="no-video">
+                    <i class="fas fa-video-slash"></i>
+                    <p>No se detecta video</p>
+                </div>
+            </div>
+            <div class="audio-meter-container">
+                <div class="audio-label">Nivel de Audio</div>
+                <div class="audio-meter">
+                    <div class="audio-meter-fill" id="audio-meter-fill"></div>
+                </div>
+            </div>
+            <div class="video-controls">
+                <button id="toggle-video-mirror" class="control-button">
+                    <i class="fas fa-repeat"></i> Cambiar espejo
+                </button>
+                <button id="toggle-video-fit" class="control-button">
+                    <i class="fas fa-expand"></i> Cambiar ajuste
+                </button>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button id="retry-button" class="primary-button">Reintentar</button>
+            <button id="continue-button" class="success-button" style="display:none;">Continuar</button>
+            <div id="device-selector" class="device-selector" style="display:none;">
+                <div class="selector-item">
+                    <label for="camera-select">Cámara:</label>
+                    <select id="camera-select"></select>
+                </div>
+                <div class="selector-item">
+                    <label for="microphone-select">Micrófono:</label>
+                    <select id="microphone-select"></select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html> 
