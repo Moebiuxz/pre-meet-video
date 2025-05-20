@@ -15,10 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMessage = document.getElementById('status-message');
     const permissionPrompt = document.getElementById('permission-prompt');
     const requestPermissionButton = document.getElementById('request-permission-button');
-    const toggleVideoMirrorButton = document.getElementById('toggle-video-mirror');
-    const toggleVideoFitButton = document.getElementById('toggle-video-fit');
     const audioOnlyButton = document.getElementById('audio-only-button');
-    const tryAlternateCameraButton = document.getElementById('try-alternate-camera');
     
     // Estado de las pruebas
     const testState = {
@@ -81,31 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Todos los dispositivos están listos. En una integración real, esto te llevaría a la videollamada.');
     });
     
-    // Eventos para controles de video
-    toggleVideoMirrorButton.addEventListener('click', () => {
-        videoContainer.classList.toggle('mirrored');
-    });
-    
-    toggleVideoFitButton.addEventListener('click', () => {
-        videoContainer.classList.toggle('contain');
-        const icon = toggleVideoFitButton.querySelector('i');
-        if (videoContainer.classList.contains('contain')) {
-            icon.className = 'fas fa-compress';
-        } else {
-            icon.className = 'fas fa-expand';
-        }
-    });
-    
     // Evento para probar solo con audio
     audioOnlyButton.addEventListener('click', () => {
         permissionPrompt.style.display = 'none';
         testAudioOnly();
-    });
-    
-    // Evento para probar con cámara alternativa
-    tryAlternateCameraButton.addEventListener('click', () => {
-        permissionPrompt.style.display = 'none';
-        testAlternateCamera();
     });
     
     // Función para iniciar las pruebas de medios
@@ -571,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!finalCombinedStream) finalCombinedStream = new MediaStream();
                 videoStreamInternal.getVideoTracks().forEach(track => finalCombinedStream.addTrack(track));
                 console.log("Pistas de video añadidas al stream final combinado.");
-                setupVideo(finalCombinedStream, false);
+                setupVideo(finalCombinedStream);
                 videoFinalized = true;
             } else if (testState.camera !== 'success' && testState.camera !== 'warning'  && testState.camera !== 'error_timeout_attempt') { 
                 handleDeviceError({name:"NoVideoStream", message:"Cámara no disponible después de los intentos"}, "camera");
@@ -870,7 +846,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
 
     // Modificar la función setupVideo para diagnósticos más detallados
-    function setupVideo(stream, alternateMode = false) {
+    function setupVideo(stream) {
         console.log("setupVideo: Iniciando configuración de video.");
 
         if (!stream) {
@@ -910,8 +886,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('setupVideo: Estado del videoElement ANTES de srcObject:', 
                     `paused: ${videoElement.paused}, readyState: ${videoElement.readyState}, networkState: ${videoElement.networkState}, error: ${videoElement.error}` );
 
-        videoContainer.classList.toggle('mirrored', true); // Espejo por defecto
-        videoContainer.classList.toggle('contain', alternateMode);
+        // Configurar video siempre con espejo por defecto (ya no usamos alternateMode)
+        videoContainer.classList.add('mirrored');
         
         try {
             // Limpiar el srcObject anterior si es diferente para forzar la recarga
@@ -947,16 +923,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     console.log("setupVideo: Video ya reproduciendo o listo para reproducir en onloadedmetadata.");
                     noVideoElement.style.display = 'none';
-                    toggleVideoMirrorButton.disabled = false;
-                    toggleVideoFitButton.disabled = false;
                 }
             };
             
             videoElement.onplaying = () => {
                 console.log('setupVideo: Evento onplaying disparado. El video se está reproduciendo.');
                 noVideoElement.style.display = 'none';
-                toggleVideoMirrorButton.disabled = false;
-                toggleVideoFitButton.disabled = false;
             };
             
             videoElement.onstalled = () => {
@@ -978,9 +950,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Si el estado de la cámara no se marcó como éxito antes (ej. en testMediaDevices), marcarlo ahora.
             if(testState.camera !== 'success'){
-                 testState.camera = alternateMode ? 'warning' : 'success'; // Usar warning si es modo alternativo
-                 updateStatusElement('camera', testState.camera, 
-                                alternateMode ? 'Cámara funcionando (modo alternativo)' : 'Cámara funcionando');
+                 testState.camera = 'success';
+                 updateStatusElement('camera', 'success', 'Cámara funcionando');
             }
             updateGlobalStatus(); // Actualiza el estado general que puede mostrar el botón Continuar
             
@@ -1058,58 +1029,5 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar el prompt de nuevo
             permissionPrompt.style.display = 'flex';
         });
-    }
-    
-    // Función para probar con configuración alternativa de cámara
-    function testAlternateCamera() {
-        updateStatusElement('camera', 'pending');
-        updateStatusElement('microphone', 'pending');
-        
-        console.log("Probando con configuración alternativa de cámara...");
-        
-        // Usar configuración minimalista
-        const constraints = {
-            audio: true,
-            video: {
-                width: { ideal: 320 },
-                height: { ideal: 240 },
-                frameRate: { max: 10 }
-            }
-        };
-        
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(stream => {
-                console.log("Stream obtenido con configuración alternativa");
-                
-                // Guardar stream
-                mediaStream = stream;
-                
-                // Procesar audio
-                const audioTracks = stream.getAudioTracks();
-                if (audioTracks.length > 0) {
-                    testState.microphone = 'success';
-                    updateStatusElement('microphone', 'success', 'Micrófono funcionando');
-                    setupAudioMeter(stream);
-                }
-                
-                // Configurar video con modo especial
-                setupVideo(stream, true);
-                
-                // Actualizar estado de cámara
-                testState.camera = 'success';
-                updateStatusElement('camera', 'success', 'Cámara funcionando (modo alternativo)');
-                
-                // Actualizar estado global
-                updateGlobalStatus();
-                
-                // Obtener lista de dispositivos
-                setTimeout(() => getAvailableDevices(), 1000);
-            })
-            .catch(error => {
-                console.error("Error al obtener medios con configuración alternativa:", error);
-                
-                // Intentar solo con audio como respaldo
-                testAudioOnly();
-            });
     }
 }); 
