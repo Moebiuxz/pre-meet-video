@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Evento para continuar (en implementación local)
     continueButton.addEventListener('click', () => {
-        alert('Todos los dispositivos están listos. En una integración real, esto te llevaría a la videollamada.');
+        alert('Todos los dispositivos están listos.');
     });
     
     // Evento para probar solo con audio
@@ -122,10 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 return devices;
             })
-            .catch(error => {
-                console.error('Error al enumerar dispositivos:', error);
-                return [];
-            });
+            .catch(() => []);
     }
     
     // Función para reiniciar todas las pruebas
@@ -194,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateGlobalStatus();
             })
             .catch(error => {
-                console.error('Error al cambiar cámara:', error);
                 handleDeviceError(error, 'camera');
                 updateGlobalStatus();
             });
@@ -223,9 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (audioContext && audioContext.state !== 'closed') {
             try {
                 audioContext.close();
-            } catch (err) {
-                console.error('Error al cerrar AudioContext:', err);
-            }
+            } catch (err) {}
         }
         
         // Obtener nuevo stream de audio
@@ -250,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateGlobalStatus();
             })
             .catch(error => {
-                console.error('Error al cambiar micrófono:', error);
                 handleDeviceError(error, 'microphone');
                 updateGlobalStatus();
             });
@@ -283,8 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateStatusElement('connection', quality, message);
                 updateGlobalStatus();
             })
-            .catch(error => {
-                console.error('Error de conexión:', error);
+            .catch(() => {
                 testState.connection = 'error';
                 updateStatusElement('connection', 'error', 'Sin conexión');
                 updateGlobalStatus();
@@ -396,9 +388,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const startAttemptTimeout = (attemptName, timeoutAction) => {
             clearMediaTimeout();
-            console.log(`Iniciando timeout (${MEDIA_TIMEOUT}ms) para ${attemptName}`);
             mediaTimeoutId = setTimeout(() => {
-                console.warn(`Timeout esperando stream para ${attemptName}.`);
+                if (attemptName.includes('video') && testState.camera === 'pending') {
+                    updateStatusElement('camera', 'error', `Timeout en ${attemptName}`);
+                    testState.camera = 'error_timeout_attempt';
+                }
+                if (attemptName.includes('audio') && testState.microphone === 'pending') {
+                    updateStatusElement('microphone', 'error', `Timeout en ${attemptName}`);
+                    testState.microphone = 'error_timeout_attempt';
+                }
                 timeoutAction(); 
             }, MEDIA_TIMEOUT);
         };
@@ -406,12 +404,11 @@ document.addEventListener('DOMContentLoaded', () => {
         function tryNextAttempt() {
             clearMediaTimeout();
             if (currentAttemptIndex >= MEDIA_ATTEMPTS.length) {
-                console.log("Todos los intentos de obtener medios han finalizado.");
                 if (testState.camera !== 'success' && testState.camera !== 'warning') {
-                     handleDeviceError({name: "AllAttemptsFailed", message: "No se pudo iniciar la cámara tras varios intentos"}, "camera");
+                     handleDeviceError({name: "AllAttemptsFailed"}, "camera");
                 }
                 if (testState.microphone !== 'success') {
-                     handleDeviceError({name: "AllAttemptsFailed", message: "No se pudo iniciar el micrófono tras varios intentos"}, "microphone");
+                     handleDeviceError({name: "AllAttemptsFailed"}, "microphone");
                 }
                 finalizeMediaStreams();
                 return;
@@ -421,40 +418,21 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAttemptIndex++;
 
             if (attempt.requiresAudioSuccess && testState.microphone !== 'success') {
-                console.log(`Saltando intento de video '${attempt.name}' porque el audio no tuvo éxito.`);
                 tryNextAttempt();
                 return;
             }
             
             if (attempt.type === 'audio' && testState.microphone === 'success') {
-                console.log(`Audio ya exitoso, saltando intento de solo audio '${attempt.name}'.`);
                 tryNextAttempt();
                 return;
             }
 
             if (attempt.type === 'video' && testState.camera === 'success') {
-                 console.log(`Video ya exitoso, saltando intento de solo video '${attempt.name}'.`);
                  tryNextAttempt();
                  return;
             }
 
-            console.log(`Realizando intento: ${attempt.name}`, attempt.constraints);
-
-            startAttemptTimeout(attempt.name, () => {
-                if (attempt.type === 'audiovideo' || attempt.type === 'video') {
-                    if(testState.camera === 'pending') {
-                        updateStatusElement('camera', 'error', `Timeout en ${attempt.name}`);
-                        testState.camera = 'error_timeout_attempt';
-                    }
-                }
-                if (attempt.type === 'audiovideo' || attempt.type === 'audio') {
-                     if(testState.microphone === 'pending') {
-                        updateStatusElement('microphone', 'error', `Timeout en ${attempt.name}`);
-                        testState.microphone = 'error_timeout_attempt';
-                     }
-                }
-                tryNextAttempt(); 
-            });
+            startAttemptTimeout(attempt.name, tryNextAttempt);
 
             let constraintsToUse = { ...attempt.constraints };
             if (attempt.type === 'video' && testState.microphone === 'success') {
@@ -464,8 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
             navigator.mediaDevices.getUserMedia(constraintsToUse)
                 .then(stream => {
                     clearMediaTimeout();
-                    console.log(`Éxito con ${attempt.name}`);
-
                     let audioProcessedThisAttempt = false;
                     let videoProcessedThisAttempt = false;
 
@@ -482,7 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (constraintsToUse.video && stream.getVideoTracks().length > 0) {
                         if (testState.camera !== 'success') { 
                             videoStreamInternal = new MediaStream(stream.getVideoTracks().map(t => t.clone()));
-                            logVideoTrackInfo(videoStreamInternal, attempt.name);
                             videoProcessedThisAttempt = true;
                         } else {
                             stream.getVideoTracks().forEach(t => t.stop());
@@ -493,11 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         (attempt.type === 'audiovideo' && audioProcessedThisAttempt && videoProcessedThisAttempt) ||
                         (attempt.type === 'audiovideo' && audioProcessedThisAttempt && testState.camera === 'success') ||
                         (attempt.type === 'audiovideo' && videoProcessedThisAttempt && testState.microphone === 'success') ||
-                        (attempt.type === 'audio' && audioProcessedThisAttempt && (testState.camera === 'success' || !MEDIA_ATTEMPTS.some(a => a.type === 'video' && a.requiresAudioSuccess))) ||
+                        (attempt.type === 'audio' && audioProcessedThisAttempt) ||
                         (attempt.type === 'video' && videoProcessedThisAttempt && testState.microphone === 'success');
 
                     if (canFinalize || (testState.camera === 'success' && testState.microphone === 'success')) {
-                         console.log(`Condiciones para finalizar cumplidas tras '${attempt.name}'.`);
                          finalizeMediaStreams();
                     } else {
                         tryNextAttempt();
@@ -505,7 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .catch(error => {
                     clearMediaTimeout();
-                    console.warn(`Fallo con ${attempt.name}:`, error.name, error.message);
                     if (attempt.type === 'audiovideo') {
                         if (constraintsToUse.video && (testState.camera === 'pending' || testState.camera === 'error_timeout_attempt')) {
                             handleDeviceError(error, 'camera');
@@ -524,8 +497,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function finalizeMediaStreams() {
             clearMediaTimeout();
-            console.log("FinalizeMediaStreams: Procesando streams finales...");
-            
             let finalCombinedStream = null;
             let audioFinalized = false;
             let videoFinalized = false;
@@ -533,7 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (testState.microphone === 'success' && audioStreamInternal && audioStreamInternal.getAudioTracks().some(t=>t.readyState === 'live')) {
                  if (!finalCombinedStream) finalCombinedStream = new MediaStream();
                  audioStreamInternal.getAudioTracks().forEach(track => finalCombinedStream.addTrack(track));
-                 console.log("Pistas de audio añadidas al stream final combinado.");
                  audioFinalized = true;
             } else if (testState.microphone !== 'success' && testState.microphone !== 'error_timeout_attempt') {
                 handleDeviceError({name:"NoAudioStream", message:"Micrófono no disponible después de los intentos"}, "microphone");
@@ -546,7 +516,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (!finalCombinedStream) finalCombinedStream = new MediaStream();
                 videoStreamInternal.getVideoTracks().forEach(track => finalCombinedStream.addTrack(track));
-                console.log("Pistas de video añadidas al stream final combinado.");
                 setupVideo(finalCombinedStream);
                 videoFinalized = true;
             } else if (testState.camera !== 'success' && testState.camera !== 'warning'  && testState.camera !== 'error_timeout_attempt') { 
@@ -554,11 +523,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (testState.camera !== 'success' && !videoFinalized) {
-                console.log("Finalize: Video no tuvo éxito, asegurando mensaje de no video.");
                 noVideoElement.innerHTML = '<i class="fas fa-video-slash"></i><p>No se pudo iniciar la cámara.</p>';
                 noVideoElement.style.display = 'flex';
-                if (testState.microphone === 'success' && testState.camera !== 'success' && testState.camera !== 'warning') {
-                }
             }
             
             if (window.mediaStream) {
@@ -598,8 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Manejar errores de dispositivo
     function handleDeviceError(error, deviceType) {
         let errorMessage = '';
-        console.error(`Error con ${deviceType}:`, error.name, error.message);
-
         switch (error.name) {
             case 'NotFoundError':
             case 'DevicesNotFoundError':
@@ -623,14 +587,14 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'AbortError':
                 errorMessage = `Se canceló el acceso a ${deviceType === 'camera' ? 'la cámara' : 'el micrófono'}`;
                 break;
-            case 'TimeoutError': // Error de timeout personalizado
+            case 'TimeoutError':
                  errorMessage = error.message || `Tiempo de espera agotado para ${deviceType}`;
                  break;
             case 'NotSupportedError':
                 errorMessage = 'Funcionalidad no compatible con este navegador.';
                 break;
             default:
-                errorMessage = `Error desconocido: ${error.message || error.name}`;
+                errorMessage = `Error desconocido`;
         }
         
         testState[deviceType] = 'error';
@@ -659,7 +623,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Actualizar el medidor de audio periódicamente
             audioMeterInterval = setInterval(updateAudioMeter, 100);
         } catch (error) {
-            console.error('Error al configurar el medidor de audio:', error);
             testState.microphone = 'warning';
             updateStatusElement('microphone', 'warning', 'Micrófono activo, pero no se puede visualizar el nivel');
             updateGlobalStatus();
@@ -745,9 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (audioContext && audioContext.state !== 'closed') {
             try {
                 audioContext.close();
-            } catch (err) {
-                console.error('Error al cerrar AudioContext:', err);
-            }
+            } catch (err) {}
         }
         
         // Limpiar referencias
@@ -760,9 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mediaStream.getTracks().forEach(track => {
                 try {
                     track.stop();
-                } catch (err) {
-                    console.error('Error al detener pista de medios:', err);
-                }
+                } catch (err) {}
             });
             mediaStream = null;
         }
@@ -827,30 +786,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Iniciar verificación de estado del video periódicamente
-    const videoDebugInterval = setInterval(() => {
-        if (videoElement && videoElement.videoWidth) {
-            console.log('Dimensiones actuales del video:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-            console.log('Tiempo de video transcurrido:', videoElement.currentTime);
-            if (videoElement.paused) {
-                console.log('¡El video está pausado! Intentando reproducir...');
-                videoElement.play().catch(e => console.error('Error al reproducir video en interval:', e));
-            }
-            // Detener este intervalo después de 5 verificaciones exitosas
-            if (videoElement.currentTime > 1) {
-                clearInterval(videoDebugInterval);
-            }
-        } else if (videoElement) {
-            console.log('Sin dimensiones de video aún. readyState:', videoElement.readyState);
-        }
-    }, 1000);
-
     // Modificar la función setupVideo para diagnósticos más detallados
     function setupVideo(stream) {
-        console.log("setupVideo: Iniciando configuración de video.");
-
         if (!stream) {
-            console.error('setupVideo: No se proporcionó stream.');
             testState.camera = 'error';
             updateStatusElement('camera', 'error', 'Error interno: stream nulo');
             noVideoElement.innerHTML = '<i class="fas fa-video-slash"></i><p>Error interno (stream nulo).</p>';
@@ -861,7 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const videoTracks = stream.getVideoTracks();
         if (videoTracks.length === 0 || !videoTracks.some(track => track.readyState === 'live')) {
-            console.error('setupVideo: No hay pistas de video activas en el stream.', videoTracks);
             testState.camera = 'error';
             updateStatusElement('camera', 'error', 'No se detectó señal de video');
             noVideoElement.innerHTML = '<i class="fas fa-video-slash"></i><p>No se detectó señal de video válida.</p>';
@@ -872,7 +809,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const currentVideoTrack = videoTracks.find(track => track.readyState === 'live');
         if (!currentVideoTrack) {
-            console.error('setupVideo: No se encontró ninguna pista de video \'live\'.', videoTracks);
             testState.camera = 'error';
             updateStatusElement('camera', 'error', 'Pista de video no disponible');
             noVideoElement.innerHTML = '<i class="fas fa-video-slash"></i><p>Pista de video no disponible.</p>';
@@ -881,18 +817,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        console.log('setupVideo: Configurando video con pista:', currentVideoTrack.label);
-        console.log('setupVideo: Configuración de pista:', currentVideoTrack.getSettings());
-        console.log('setupVideo: Estado del videoElement ANTES de srcObject:', 
-                    `paused: ${videoElement.paused}, readyState: ${videoElement.readyState}, networkState: ${videoElement.networkState}, error: ${videoElement.error}` );
-
-        // Configurar video siempre con espejo por defecto (ya no usamos alternateMode)
         videoContainer.classList.add('mirrored');
         
         try {
             // Limpiar el srcObject anterior si es diferente para forzar la recarga
             if (videoElement.srcObject && videoElement.srcObject !== stream) {
-                console.log("setupVideo: Limpiando srcObject anterior.");
                 videoElement.pause();
                 videoElement.srcObject = null; 
             }
@@ -904,30 +833,17 @@ document.addEventListener('DOMContentLoaded', () => {
             videoElement.srcObject = stream; // Asignar el stream
             
             videoElement.onloadedmetadata = () => {
-                console.log('setupVideo: Evento onloadedmetadata. Dimensiones:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-                console.log('setupVideo: Estado del videoElement en onloadedmetadata:', 
-                            `paused: ${videoElement.paused}, readyState: ${videoElement.readyState}, networkState: ${videoElement.networkState}, error: ${videoElement.error}` );
-                
                 if (videoElement.paused) {
-                    console.log("setupVideo: Video pausado en onloadedmetadata. Intentando play().");
-                    videoElement.play()
-                        .then(() => {
-                            console.log('setupVideo: Play() exitoso después de onloadedmetadata.');
-                            // noVideoElement.style.display = 'none'; // Se maneja en onplaying
-                        })
-                        .catch(err => {
-                            console.error('setupVideo: Error en play() después de onloadedmetadata:', err);
-                            noVideoElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error al reproducir video.</p>';
-                            noVideoElement.style.display = 'flex';
-                        });
+                    videoElement.play().catch(() => {
+                        noVideoElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error al reproducir video.</p>';
+                        noVideoElement.style.display = 'flex';
+                    });
                 } else {
-                    console.log("setupVideo: Video ya reproduciendo o listo para reproducir en onloadedmetadata.");
                     noVideoElement.style.display = 'none';
                 }
             };
             
             videoElement.onplaying = () => {
-                console.log('setupVideo: Evento onplaying disparado. El video se está reproduciendo.');
                 noVideoElement.style.display = 'none';
             };
             
@@ -939,10 +855,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn("setupVideo: Evento onsuspend - la carga del video se ha suspendido.");
             };
 
-            videoElement.onerror = (e) => {
-                console.error('setupVideo: Error en el elemento de video:', videoElement.error, e);
+            videoElement.onerror = () => {
                 testState.camera = 'error';
-                updateStatusElement('camera', 'error', `Error de video: ${videoElement.error?.message || 'desconocido'}` );
+                updateStatusElement('camera', 'error', `Error de video`);
                 noVideoElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error al mostrar el video.</p>';
                 noVideoElement.style.display = 'flex';
                 updateGlobalStatus();
@@ -959,17 +874,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("setupVideo: Intentando play() inmediatamente después de asignar srcObject.");
             videoElement.play().then(() => {
                 console.log("setupVideo: Play() inmediato tuvo éxito.");
-                 // noVideoElement.style.display = 'none'; // Se maneja en onplaying
             }).catch(e => {
                 console.warn('setupVideo: Play() inmediato falló (esto puede ser normal, esperando metadata):', e.name, e.message);
             });
             
-            console.log("setupVideo: Configuración finalizada.");
-
         } catch (err) {
-            console.error('setupVideo: Excepción durante la configuración del video:', err);
             testState.camera = 'error';
-            updateStatusElement('camera', 'error', 'Excepción al configurar video: ' + err.message);
+            updateStatusElement('camera', 'error', 'Excepción al configurar video');
             noVideoElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Excepción al configurar video.</p>';
             noVideoElement.style.display = 'flex';
             updateGlobalStatus();
