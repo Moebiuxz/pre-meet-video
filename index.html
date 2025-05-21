@@ -70,6 +70,20 @@
             </div>
         </div>
         
+        <div id="device-selector" class="device-selector" style="display:none;">
+            <h3 class="device-selector-title">Selección de Dispositivos</h3>
+            <div class="device-selector-container">
+                <div class="selector-item">
+                    <label for="camera-select"><i class="fas fa-video"></i> Cámara:</label>
+                    <select id="camera-select"></select>
+                </div>
+                <div class="selector-item">
+                    <label for="microphone-select"><i class="fas fa-microphone"></i> Micrófono:</label>
+                    <select id="microphone-select"></select>
+                </div>
+            </div>
+        </div>
+        
         <div class="preview-container">
             <div class="video-container">
                 <video id="video-preview" autoplay playsinline muted></video>
@@ -89,16 +103,6 @@
         <div class="actions">
             <button id="retry-button" class="primary-button">Reintentar</button>
             <button id="continue-button" class="success-button" style="display:none;">Continuar</button>
-            <div id="device-selector" class="device-selector" style="display:none;">
-                <div class="selector-item">
-                    <label for="camera-select">Cámara:</label>
-                    <select id="camera-select"></select>
-                </div>
-                <div class="selector-item">
-                    <label for="microphone-select">Micrófono:</label>
-                    <select id="microphone-select"></select>
-                </div>
-            </div>
         </div>
     </div>
 

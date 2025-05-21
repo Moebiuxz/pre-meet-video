@@ -281,16 +281,32 @@ button:focus {
 
 .device-selector {
     width: 100%;
-    max-width: 500px;
-    margin-top: 1rem;
+    margin-bottom: 1.5rem;
     padding: 1rem;
     background-color: var(--card-background);
     border-radius: 8px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--primary-color);
+}
+
+.device-selector-title {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.device-selector-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
 }
 
 .selector-item {
-    margin-bottom: 1rem;
+    flex: 1;
+    min-width: 200px;
 }
 
 .selector-item:last-child {
@@ -298,26 +314,42 @@ button:focus {
 }
 
 .selector-item label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
     font-weight: 500;
     color: var(--text-color);
 }
 
+.selector-item label i {
+    color: var(--primary-color);
+}
+
 .selector-item select {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 0.9rem;
     color: var(--text-color);
     background-color: white;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a73e8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px;
+    transition: all 0.2s ease;
 }
 
 .selector-item select:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+.selector-item select:hover {
+    border-color: var(--primary-color);
 }
 
 /* Responsive Styles */
@@ -352,6 +384,29 @@ button:focus {
     button {
         width: 100%;
         max-width: 250px;
+    }
+    
+    .device-selector {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .device-selector-title {
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .device-selector-container {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .selector-item {
+        min-width: 100%;
+    }
+    
+    .selector-item select {
+        padding: 0.6rem;
     }
 }
 

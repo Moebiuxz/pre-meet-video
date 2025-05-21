@@ -103,6 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         return navigator.mediaDevices.enumerateDevices()
             .then(devices => {
+                let hasCameras = false;
+                let hasMicrophones = false;
+                
                 devices.forEach(device => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
@@ -111,15 +114,39 @@ document.addEventListener('DOMContentLoaded', () => {
                         option.text = device.label || `Cámara ${availableCameras.length + 1}`;
                         availableCameras.push(device);
                         cameraSelect.appendChild(option);
+                        hasCameras = true;
                     } else if (device.kind === 'audioinput') {
                         option.text = device.label || `Micrófono ${availableMicrophones.length + 1}`;
                         availableMicrophones.push(device);
                         microphoneSelect.appendChild(option);
+                        hasMicrophones = true;
                     }
                 });
                 
-                // Mostrar/ocultar el selector de dispositivos según disponibilidad
-                deviceSelector.style.display = (availableCameras.length > 1 || availableMicrophones.length > 1) ? 'block' : 'none';
+                // Mostrar siempre el selector de dispositivos si hay al menos una cámara o micrófono
+                if (hasCameras || hasMicrophones) {
+                    deviceSelector.style.display = 'block';
+                    
+                    // Si no hay cámaras, mostrar mensaje en el selector
+                    if (!hasCameras) {
+                        const option = document.createElement('option');
+                        option.text = 'No se detectaron cámaras';
+                        option.disabled = true;
+                        cameraSelect.appendChild(option);
+                        cameraSelect.disabled = true;
+                    }
+                    
+                    // Si no hay micrófonos, mostrar mensaje en el selector
+                    if (!hasMicrophones) {
+                        const option = document.createElement('option');
+                        option.text = 'No se detectaron micrófonos';
+                        option.disabled = true;
+                        microphoneSelect.appendChild(option);
+                        microphoneSelect.disabled = true;
+                    }
+                } else {
+                    deviceSelector.style.display = 'none';
+                }
                 
                 return devices;
             })
