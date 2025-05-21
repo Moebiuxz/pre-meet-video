@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const permissionPrompt = document.getElementById('permission-prompt');
     const requestPermissionButton = document.getElementById('request-permission-button');
     const audioOnlyButton = document.getElementById('audio-only-button');
+    const previewContainer = document.querySelector('.preview-container');
     
     // Estado de las pruebas
     const testState = {
@@ -145,6 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ocultar video y restablecer medidor de audio
         noVideoElement.style.display = 'flex';
         audioMeterFill.style.width = '0%';
+        
+        // Ocultar contenedor de vista previa
+        previewContainer.classList.remove('visible');
         
         // Ocultar botón de continuar
         continueButton.style.display = 'none';
@@ -604,6 +608,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configurar el medidor de audio
     function setupAudioMeter(stream) {
         try {
+            // Asegurarse de que el contenedor de vista previa sea visible para el medidor de audio
+            previewContainer.classList.add('visible');
+            
             // Crear el contexto de audio
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioContext = new AudioContext();
@@ -730,6 +737,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (videoElement.srcObject) {
             videoElement.srcObject = null;
         }
+        
+        // Ocultar el contenedor de vista previa
+        previewContainer.classList.remove('visible');
     }
     
     // Actualizar elementos de estado visual
@@ -793,6 +803,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatusElement('camera', 'error', 'Error interno: stream nulo');
             noVideoElement.innerHTML = '<i class="fas fa-video-slash"></i><p>Error interno (stream nulo).</p>';
             noVideoElement.style.display = 'flex';
+            // Ocultar contenedor de vista previa al no tener video
+            previewContainer.classList.remove('visible');
             updateGlobalStatus();
             return;
         }
@@ -803,6 +815,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatusElement('camera', 'error', 'No se detectó señal de video');
             noVideoElement.innerHTML = '<i class="fas fa-video-slash"></i><p>No se detectó señal de video válida.</p>';
             noVideoElement.style.display = 'flex';
+            // Ocultar contenedor de vista previa al no tener video
+            previewContainer.classList.remove('visible');
             updateGlobalStatus();
             return;
         }
@@ -813,6 +827,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatusElement('camera', 'error', 'Pista de video no disponible');
             noVideoElement.innerHTML = '<i class="fas fa-video-slash"></i><p>Pista de video no disponible.</p>';
             noVideoElement.style.display = 'flex';
+            // Ocultar contenedor de vista previa al no tener video
+            previewContainer.classList.remove('visible');
             updateGlobalStatus();
             return;
         }
@@ -820,6 +836,9 @@ document.addEventListener('DOMContentLoaded', () => {
         videoContainer.classList.add('mirrored');
         
         try {
+            // Mostrar el contenedor de vista previa cuando tenemos video
+            previewContainer.classList.add('visible');
+            
             // Limpiar el srcObject anterior si es diferente para forzar la recarga
             if (videoElement.srcObject && videoElement.srcObject !== stream) {
                 videoElement.pause();
@@ -837,6 +856,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     videoElement.play().catch(() => {
                         noVideoElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error al reproducir video.</p>';
                         noVideoElement.style.display = 'flex';
+                        // Ocultar contenedor de vista previa si hay error
+                        previewContainer.classList.remove('visible');
                     });
                 } else {
                     noVideoElement.style.display = 'none';
@@ -860,6 +881,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateStatusElement('camera', 'error', `Error de video`);
                 noVideoElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Error al mostrar el video.</p>';
                 noVideoElement.style.display = 'flex';
+                // Ocultar contenedor de vista previa si hay error
+                previewContainer.classList.remove('visible');
                 updateGlobalStatus();
             };
             
@@ -883,6 +906,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatusElement('camera', 'error', 'Excepción al configurar video');
             noVideoElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>Excepción al configurar video.</p>';
             noVideoElement.style.display = 'flex';
+            // Ocultar contenedor de vista previa si hay error
+            previewContainer.classList.remove('visible');
             updateGlobalStatus();
         }
     }
@@ -910,6 +935,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 testState.microphone = 'success';
                 updateStatusElement('microphone', 'success', 'Micrófono funcionando');
                 setupAudioMeter(audioStream);
+                
+                // En modo solo audio, mostrar el contenedor de vista previa para el medidor de audio
+                previewContainer.classList.add('visible');
             }
             
             // Marcar la cámara como no disponible
@@ -934,6 +962,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             testState.camera = 'warning';
             updateStatusElement('camera', 'warning', 'Modo audio solamente (sin cámara)');
+            
+            // Ocultar contenedor de vista previa si hay error
+            previewContainer.classList.remove('visible');
             
             updateGlobalStatus();
             
